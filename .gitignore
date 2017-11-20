@@ -4,3 +4,4 @@
 *.log
 *.pyc
 Z3_stations/
+clientZ3.py
