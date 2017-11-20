@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
+import sys
 import os
 import logging
 from itertools import product
-from socket import error as socket_error
 from multiprocessing import Process, Queue
 import json
 import pandas as pd
@@ -25,31 +25,50 @@ class ArclinkMassDownloader(object):
 
         All messages, errors are handled by a console and file logger.
     '''
-    def __init__(self, user, data_dir='.', log_file='amdl.log'):
+    def __init__(self, user,
+                 host='webdc.eu', port=18002,
+                 route='True',
+                 data_dir='.', log_file='amdl.log',
+                 client_debug=False):
         '''
             :param user: user (used as credential)
-            :type user: string
+            :param host: arclink server
+            :type host: string:type user: string
             :param data_dir: data directory path
+            :param port: server port number
+            :param route: enable arclink routing
+            :type route: boolean
+            :type port: int
             :type data_dir: string
             :param log_file: logger file
             :type log_file: string
         '''
         self._setup_logger(log_file)
+        self.host = host
+        self.port = port
         self.user = user
+        self.route = route
         self.data_dir = data_dir
         self.log_file = log_file
+        self.client_debug = client_debug
         self.logger.debug('user={}, data_dir={}, '
                           'log_file={}'.format(user, data_dir, log_file))
 
     def _connect(self):
-        ''' setup arclink client
+        ''' setup arclink client/connection
 
-            :param user: user (used as credential)
-            :type user: string
             :return: arclink client instance
         '''
-        client = Client(user=self.user)
-        client.max_status_requests = 400
+        self.logger.info('Connecting to {}@{}:{}'.format(self.user,
+                                                         self.host,
+                                                         self.port))
+        try:
+            client = Client(host=self.host, user=self.user,
+                            port=self.port, debug=self.client_debug)
+        except Exception as e:
+            self.logger.error(e)
+            sys.exit(1)
+        client.max_status_requests = 200
         return client
 
     def _setup_logger(self, log_file,
@@ -166,8 +185,11 @@ class ArclinkMassDownloader(object):
         # so let instanciate it here.
         client = self._connect()
         try:
-            client.save_waveforms(filename, net, sta, loc, chan,
-                                  d1, d2, format='FSEED')
+            client.save_waveforms(filename,
+                                  net, sta, loc, chan,
+                                  d1, d2,
+                                  format='FSEED',
+                                  route=self.route)
         except Exception as e:
             self.logger.error(logprefix + '{}: {}, {}, '
                               '{}'.format(e, waveform_id, d1, d2))
@@ -320,24 +342,28 @@ if __name__ == "__main__":
     ''' Todo: use station inventory to drive the requests.'''
 
     network = 'FR'
-    stations = ['CIEL']
+    stations = ['CIEL', 'STR']
     location = '*'
     channels = ['HHE', 'HHN', 'HHZ']
 
     from_date = UTCDateTime("2017-07-01 00:00:00")
-    to_date = UTCDateTime("2017-07-02 00:00:00")
+    to_date = UTCDateTime("2017-07-01 06:00:00")
     freq = '1H'
 
-    user = 'marc@'
+    host = 'renass-fw.u-strasbg.fr'
+    port = 18001
+    user = 'marc'
     data_dir = '.'
-    log_file = 'arclink_mass_downloader.log'
+    log_file = 'downloader.log'
     # arclink servers usually allow very few concurrent processes
     # keep it < 8
-    nbprocs = 6
+    nbprocs = 1
 
     waveforms_ids = product([network], stations, [location], channels)
 
     # Perform arclink requests using master/slave mode
-    recup = ArclinkMassDownloader(user, data_dir, log_file)
+    recup = ArclinkMassDownloader(user=user, host=host, port=port,
+                                  route=False,
+                                  data_dir=data_dir, log_file=log_file)
     recup.get_waveforms_master(waveforms_ids,
                                from_date, to_date, freq, nbprocs)
