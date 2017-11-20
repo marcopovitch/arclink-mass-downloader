@@ -112,6 +112,10 @@ class ArclinkMassDownloader(object):
             :type freq: Frequency strings ('1d', '1H')
             :return: UTCDateTime array
         '''
+        if from_date >= to_date:
+            self.logger.error('Check your time range ! ['
+                              '{} - {}]'.format(from_date, to_date))
+            return []
         dates = [i for i in pd.date_range(start=from_date.datetime,
                                           end=to_date.datetime,
                                           freq=freq).to_pydatetime()]
