@@ -232,7 +232,7 @@ class ArclinkMassDownloader(object):
 
         # slaves
         for proc_id in range(nbprocs):
-            slave_pool.append(Process(target=self.get_waveforms_chunk,
+            slave_pool.append(Process(target=self.get_waveforms_slave,
                                       args=(proc_id, rqt_queue)))
 
         # start the slaves
@@ -258,7 +258,7 @@ class ArclinkMassDownloader(object):
         for slave in slave_pool:
             slave.join()
 
-    def get_waveforms_chunk(self, proc_id, rqt_queue):
+    def get_waveforms_slave(self, proc_id, rqt_queue):
         ''' Slave process to handle arclink request
 
             :param proc_id: process rank
@@ -299,7 +299,7 @@ class ArclinkMassDownloader(object):
 
         # slaves
         for proc_id in range(nbprocs):
-            slave_pool.append(Process(target=self.get_waveforms_chunk,
+            slave_pool.append(Process(target=self.get_waveforms_slave,
                                       args=(proc_id, rqt_queue)))
 
         # start the slaves
